@@ -1,8 +1,30 @@
-version: '3'
+#
+# Anti-Ad FortiGuard Blocklist Exporter
+#
+# This Docker Compose file sets up a service that automatically fetches popular
+# ad-blocking lists (AdGuard and AdAway), strips them down to just domain names,
+# and serves them over HTTP. This allows a FortiGate firewall to use them as
+# dynamic, auto-updating External Block Lists (Threat Feeds).
+#
+
+version: '3.8' # Specifies the version of the Docker Compose file format.
+
 services:
+  # Defines the primary service container for this stack.
   adblock-exporter:
+    # 'build: .' tells Docker to build an image from the Dockerfile in the
+    # current directory.
     build: .
+    
+    # Assigns a friendly, predictable name to the container for easy identification.
     container_name: adblock-exporter
+    
+    # Maps a port on the host machine to a port inside the container.
+    # Format is "HOST_PORT:CONTAINER_PORT"
+    # The host port can be changed (e.g., "8053:8080") to avoid conflicts.
     ports:
       - "8053:8080"
+      
+    # Ensures the container restarts automatically if it stops or if the Docker
+    # host reboots, making the service resilient.
     restart: unless-stopped
