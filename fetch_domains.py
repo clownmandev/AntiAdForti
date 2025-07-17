@@ -48,7 +48,7 @@ def save_domains(domains, filename):
 if __name__ == "__main__":
     adguard_domains = fetch_and_parse_list(
         "AdGuard DNS filter",
-        "https://raw.githubusercontent.com/AdguardTeam/AdGuardSDNSFilter/master/Filters/filter.txt",
+        "https://raw.githubusercontent.com/AdguardTeam/AdGuardSDNSFilter/master/adguard-sdns-filter.txt", # <-- This URL is now correct
         parse_adguard_filter
     )
     save_domains(adguard_domains, "adguard_domains.txt")
