@@ -17,7 +17,8 @@ def fetch_and_parse_list(name, url, parser_func):
     Returns:
         set: A set of unique domain names from the list. Returns an empty set on failure.
     """
-    print(f"Fetching {name} from {url}...")
+    print(f"--- Processing: {name} ---")
+    print(f"Fetching from {url}...")
     domains = set()
     try:
         # Make an HTTP GET request to the URL with a 15-second timeout.
@@ -47,9 +48,10 @@ def parse_adguard_filter(text):
     for line in text.splitlines():
         line = line.strip()
         # We are only interested in lines that block entire domains.
-        if line.startswith("||") and line.endswith("^"):
-            # Use regex to extract the domain part.
-            match = re.match(r"^\|\|([a-z0-9.-]+)\^", line)
+        # This handles formats like ||example.com^ and ||example.com^$important
+        if line.startswith("||") and "^" in line:
+            # Use regex to extract the domain part. It handles optional ports.
+            match = re.match(r"^\|\|([a-z0-9.-]+?)(?::\d+)?\^", line)
             if match:
                 domains.add(match.group(1))
     return domains
@@ -89,23 +91,48 @@ def save_domains(domains, filename):
         # Sort the domains alphabetically before writing for consistency.
         for domain in sorted(list(domains)):
             f.write(domain + "\n")
-    print(f"Saved {len(domains)} domains to {filename}")
+    print(f"✅ Saved {len(domains)} domains to {filename}\n")
 
 # This standard Python construct ensures the code inside only runs when the script
 # is executed directly (not when imported as a module).
 if __name__ == "__main__":
-    # --- Source 1: AdGuard DNS Filter ---
-    adguard_domains = fetch_and_parse_list(
-        "AdGuard DNS filter",
-        "https://raw.githubusercontent.com/AdguardTeam/AdGuardSDNSFilter/master/adguard-sdns-filter.txt",
-        parse_adguard_filter
-    )
-    save_domains(adguard_domains, "adguard_domains.txt")
+    # --- Define all blocklist sources here ---
+    sources = [
+        {
+            "name": "AdGuard DNS Filter",
+            "url": "https://raw.githubusercontent.com/AdguardTeam/AdGuardSDNSFilter/master/adguard-sdns-filter.txt",
+            "parser": parse_adguard_filter
+        },
+        {
+            "name": "AdAway Hosts",
+            "url": "https://adaway.org/hosts.txt",
+            "parser": parse_hosts_file
+        },
+        {
+            "name": "AdGuard Base AdServers",
+            "url": "https://adguardteam.github.io/AdguardFilters/BaseFilter/sections/adservers.txt",
+            "parser": parse_adguard_filter
+        },
+        {
+            "name": "EasyList AdServers",
+            "url": "https://raw.githubusercontent.com/easylist/easylist/master/easylist/easylist_adservers.txt",
+            "parser": parse_adguard_filter
+        },
+        {
+            "name": "AdGuard SDNSFilter Full",
+            "url": "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt",
+            "parser": parse_adguard_filter
+        }
+    ]
 
-    # --- Source 2: AdAway Hosts List ---
-    adaway_domains = fetch_and_parse_list(
-        "AdAway hosts",
-        "https://adaway.org/hosts.txt",
-        parse_hosts_file
-    )
-    save_domains(adaway_domains, "adaway_domains.txt")
+    # --- Fetch, parse, and save each list individually ---
+    for source in sources:
+        # Fetch and parse the current list
+        domains = fetch_and_parse_list(source["name"], source["url"], source["parser"])
+
+        # Generate a clean filename from the source name
+        # (e.g., "AdGuard DNS Filter" becomes "adguard_dns_filter.txt")
+        output_filename = source["name"].lower().replace(" ", "_") + ".txt"
+        
+        # Save the domains to their own file
+        save_domains(domains, output_filename)
